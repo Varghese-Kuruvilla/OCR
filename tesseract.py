@@ -38,6 +38,15 @@ class ocrutils:
         Function for table extraction from a loan document
         '''
         display("Input image",self.img)
+        self.gray_img = cv2.cvtColor(self.img,cv2.COLOR_BGR2GRAY)
+        display("Grayscale image",self.gray_img)
+
+        #Assume that the paper is white and the ink is black. 
+        _,thresh_img = cv2.threshold(self.gray_img,220,255,cv2.THRESH_BINARY_INV)
+        print("thresh_img",thresh_img)
+        display("Thresholded image",thresh_img)
+
+        #Finding Contours on the image and extracting the largest one
         
 
     def preprocess_img(self):
