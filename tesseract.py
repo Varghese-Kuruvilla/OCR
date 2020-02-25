@@ -28,7 +28,6 @@ class ocrutils:
 
         #Load Image
         self.img = cv2.imread(args["image"])
-        display("Input image",self.img)
         self.extract_table()
         self.preprocess_img()
         self.run_tesseract()
@@ -37,17 +36,40 @@ class ocrutils:
         '''
         Function for table extraction from a loan document
         '''
+
+        #Image for drawing contours
+        cnt_img = np.copy(self.img)
+
         display("Input image",self.img)
         self.gray_img = cv2.cvtColor(self.img,cv2.COLOR_BGR2GRAY)
         display("Grayscale image",self.gray_img)
 
         #Assume that the paper is white and the ink is black. 
         _,thresh_img = cv2.threshold(self.gray_img,220,255,cv2.THRESH_BINARY_INV)
-        print("thresh_img",thresh_img)
         display("Thresholded image",thresh_img)
 
         #Finding Contours on the image and extracting the largest one
-        
+        contours, hierarchy = cv2.findContours(thresh_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+        large_contour = sorted(contours, key=cv2.contourArea, reverse=True)[:1] #Extract only the table
+        print("len(contours)",len(contours))
+
+        table_mask = np.zeros((self.img.shape[0],self.img.shape[1]),dtype = np.uint8)
+        table_mask = cv2.drawContours(table_mask,large_contour,0,(255,255,255),-1)
+        display("table_mask",table_mask)
+
+        table_img = cv2.bitwise_and(thresh_img,thresh_img,mask=table_mask)
+        display("table_img",table_img)
+
+
+        #Now we find each contour within the table and give it as input to OCR
+        contours, hierarchy = cv2.findContours(table_img,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
+        cell_contours = sorted(contours,key=cv2.contourArea,reverse=True)
+
+        for cnt in cell_contours:
+            cv2.drawContours(cnt_img, [cnt], 0, (0,255,0), 3)
+        display("Contour Image",cnt_img)
+        # breakpoint()
+
 
     def preprocess_img(self):
         '''Preprocessing image for OCR
