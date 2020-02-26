@@ -46,13 +46,25 @@ class ocrutils:
         threshold = 10
         flag = False
 
-        # display("Input image",self.img)
+        display("Input image",self.img)
+
         self.gray_img = cv2.cvtColor(self.img,cv2.COLOR_BGR2GRAY)
-        # display("Grayscale image",self.gray_img)
+        display("Grayscale image",self.gray_img)
 
         #Assume that the paper is white and the ink is black. 
-        _,thresh_img = cv2.threshold(self.gray_img,220,255,cv2.THRESH_BINARY_INV)
-        # display("Thresholded image",thresh_img)
+        #TODO: The threshold value of 100 shouldn't be hardcoded
+        _,thresh_img = cv2.threshold(self.gray_img,190,255,cv2.THRESH_BINARY_INV)
+        display("Thresholded image",thresh_img)
+
+        #Remove noise from the image
+        # kernel = np.ones((5,5),np.uint8)
+        # thresh_img = cv2.morphologyEx(thresh_img, cv2.MORPH_GRADIENT, kernel)
+        # display("thresh_img",thresh_img)
+
+
+        #Adaptive Thresholding
+        # thresh_img = cv2.adaptiveThreshold(self.gray_img,255,cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,11,2)
+        # utils.display("Adaptive Thresholding",thresh_img)
 
         #Finding Contours on the image and extracting the largest one
         contours, hierarchy = cv2.findContours(thresh_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
@@ -61,10 +73,10 @@ class ocrutils:
 
         table_mask = np.zeros((self.img.shape[0],self.img.shape[1]),dtype = np.uint8)
         table_mask = cv2.drawContours(table_mask,large_contour,0,(255,255,255),-1)
-        # display("table_mask",table_mask)
+        display("table_mask",table_mask)
 
         table_img = cv2.bitwise_and(thresh_img,thresh_img,mask=table_mask)
-        # display("table_img",table_img)
+        display("table_img",table_img)
 
 
         #Now we find each contour within the table and give it as input to OCR
@@ -75,7 +87,8 @@ class ocrutils:
         for cnt in cell_contours:
             x,y,w,h = cv2.boundingRect(cnt)
 
-            if(w >= 300 and w <= 400):
+            # if(w >= 300 and w <= 400):
+            if(w >= 300):
                 #Merge neighbouring contours
                 box_coord = np.array([x,y,w,h]).reshape(4,-1)
                 print("box_coord:",box_coord)
@@ -104,54 +117,84 @@ class ocrutils:
         cnt_img = np.copy(self.img)
         # display("Input image",self.img)
         for coord in box_coord_ls:
-            ocr_img = self.img[coord[1,0]:coord[1,0] + coord[3,0],coord[0,0]:coord[0,0] + coord[2,0]]
-            display("OCR_Image",ocr_img)
-            self.preprocess_img(ocr_img)
-            # cv2.rectangle(cnt_img,(coord[0,0],coord[1,0]),(coord[0,0] + coord[2,0],coord[1,0] + coord[3,0]),(0,0,255),5)
-        # display("Contour Image",cnt_img)
-        
+            # ocr_img = self.img[coord[1,0]:coord[1,0] + coord[3,0],coord[0,0]:coord[0,0] + coord[2,0]]
+            # display("OCR_Image",ocr_img)
+            # self.preprocess_img(ocr_img)
+            cv2.rectangle(cnt_img,(coord[0,0],coord[1,0]),(coord[0,0] + coord[2,0],coord[1,0] + coord[3,0]),(0,0,255),5)
+        display("Contour Image",cnt_img)        
 
-    def preprocess_img(self,ocr_img):
-        '''Preprocessing image for OCR
+    def preprocess_img(self,cnt_img):
+        '''
+        Function to carry out preprocessing, call the function to run OCR using tesseract
+        Preprocessing image for OCR
         Involves the following steps:
         1) Scaling to 300 DPI(Ideally)
         2) Increase contrast of the image
         3) Binarize the image
         4) Removing noise 
-        5) Deskew the image (Correct for rotation)'''
+        5) Deskew the image (Correct for rotation)
+        
+        Parameters
 
-        #Binarization using Otsu
-        gray_img = cv2.cvtColor(ocr_img,cv2.COLOR_BGR2GRAY)
+        --------------------
+
+        cnt_img: Numpy array
+                Image cropped to an individual contour which is to be preprocessed
+        '''
+
+        #Conversion to grayscale
+        gray_img = cv2.cvtColor(cnt_img,cv2.COLOR_BGR2GRAY)
         display("Grayscale image",gray_img)
         
+        #Thresholding the image
+        _,thresh_img = cv2.threshold(gray_img,220,255,cv2.THRESH_BINARY_INV)
+        display("thresh_img",thresh_img)
 
-        gray_img = cv2.blur(gray_img,(5,5))
-        display("Blurred Image",gray_img)
-        # ret,thresh_img = cv2.threshold(self.gray_img,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-        # print("Ret",ret)
-        # utils.display("Otsu",thresh_img)
+        self.run_tesseract(thresh_img)
+
 
         #Adaptive Thresholding
-        adaptive_img = cv2.adaptiveThreshold(gray_img,255,cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,11,2)
-        utils.display("Adaptive Thresholding",adaptive_img)
+        # adaptive_img = cv2.adaptiveThreshold(gray_img,255,cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,11,2)
+        # utils.display("Adaptive Thresholding",adaptive_img)
         
 
-    def run_tesseract(self):
-        '''Function to run OCR using tesseract on self.img'''
-        #Conversion to grayscale
-        img_gray = cv2.cvtColor(self.img,cv2.COLOR_BGR2GRAY)
-        display("Grayscale Image",img_gray)
+    def run_tesseract(self,ocr_img):
+        '''
+        Function to run OCR using tesseract on ocr_img
+
+        Parameters
+
+        ---------------
+
+        ocr_img: Numpy array
+                Preprocessed image on which OCR is run using tesseract
+        '''
+
         filename = "{}.png".format(os.getpid())
-        cv2.imwrite(str(filename),img_gray)
+        cv2.imwrite(str(filename),ocr_img)
         print("Image saved to disk")
 
         #Load image from disk and apply run_tesseract
         text = pytesseract.image_to_string(Image.open(filename))
         #Save text to a file
-        f = open("ocr_cheque.txt","w")
+        f = open(str(os.getpid()) + ".txt","w")
         f.write(text)
         f.close()
         print("Written into file")
+
+        #Remove the image file
+        # if os.path.isfile(str(filename)):
+            # os.remove(myfile)
+        # else: 
+            # print("Error: %s file not found" % myfile)
+        
+        self.parse_output()
+
+    def parse_output(self):
+        '''
+        Function to parse the text file using regex and save the output in a database
+        '''
+        
 
 def breakpoint():
     inp = input("Waiting for input...")
