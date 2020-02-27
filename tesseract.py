@@ -8,6 +8,7 @@ import pytesseract
 import argparse
 import sys
 import matplotlib.pyplot as plt
+import re
 
 #Import utils
 import debug_utils.utils as utils
@@ -19,6 +20,8 @@ class ocrutils:
     def __init__(self):
         self.img = None
         self.gray_img = None
+        self.rx_dict = {'name':re.compile(r'(?P<name>nam.*)')}
+        self.parse_dict = {'name':[]}
 
     def load_img(self):
         '''Function to load the image corresponding to the path defined by the user'''
@@ -53,7 +56,7 @@ class ocrutils:
 
         #Assume that the paper is white and the ink is black. 
         #TODO: The threshold value of 100 shouldn't be hardcoded
-        _,thresh_img = cv2.threshold(self.gray_img,190,255,cv2.THRESH_BINARY_INV)
+        _,thresh_img = cv2.threshold(self.gray_img,240,255,cv2.THRESH_BINARY_INV)
         display("Thresholded image",thresh_img)
 
         #Remove noise from the image
@@ -117,11 +120,11 @@ class ocrutils:
         cnt_img = np.copy(self.img)
         # display("Input image",self.img)
         for coord in box_coord_ls:
-            # ocr_img = self.img[coord[1,0]:coord[1,0] + coord[3,0],coord[0,0]:coord[0,0] + coord[2,0]]
-            # display("OCR_Image",ocr_img)
-            # self.preprocess_img(ocr_img)
-            cv2.rectangle(cnt_img,(coord[0,0],coord[1,0]),(coord[0,0] + coord[2,0],coord[1,0] + coord[3,0]),(0,0,255),5)
-        display("Contour Image",cnt_img)        
+            ocr_img = self.img[coord[1,0]:coord[1,0] + coord[3,0],coord[0,0]:coord[0,0] + coord[2,0]]
+            display("OCR_Image",ocr_img)
+            self.preprocess_img(ocr_img)
+            # cv2.rectangle(cnt_img,(coord[0,0],coord[1,0]),(coord[0,0] + coord[2,0],coord[1,0] + coord[3,0]),(0,0,255),5)
+        # display("Contour Image",cnt_img)        
 
     def preprocess_img(self,cnt_img):
         '''
@@ -141,17 +144,23 @@ class ocrutils:
         cnt_img: Numpy array
                 Image cropped to an individual contour which is to be preprocessed
         '''
+        self.counter = 0 #Counter keeps track of which picture is passed to OCR
 
         #Conversion to grayscale
         gray_img = cv2.cvtColor(cnt_img,cv2.COLOR_BGR2GRAY)
-        display("Grayscale image",gray_img)
+        # display("Grayscale image",gray_img)
         
         #Thresholding the image
-        _,thresh_img = cv2.threshold(gray_img,220,255,cv2.THRESH_BINARY_INV)
-        display("thresh_img",thresh_img)
+        _,thresh_img = cv2.threshold(gray_img,230,255,cv2.THRESH_BINARY)
+        # display("thresh_img",thresh_img)
 
-        self.run_tesseract(thresh_img)
-
+        #Split the entire image into individual boxes and pass each one to run_tesseract
+        coord_ls = [0,362,693,thresh_img.shape[1]]
+        for i in range(0,len(coord_ls)-1):
+            box_img = thresh_img[:,coord_ls[i]:coord_ls[i+1]]
+            self.counter = (i + 1)
+            self.run_tesseract(box_img)
+        
 
         #Adaptive Thresholding
         # adaptive_img = cv2.adaptiveThreshold(gray_img,255,cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,11,2)
@@ -170,12 +179,19 @@ class ocrutils:
                 Preprocessed image on which OCR is run using tesseract
         '''
 
+        display("Image before passing to tesseract",ocr_img)
+
+        # Define config parameters.
+	    # '-l eng'  for using the English language
+	    # '--oem 1' for using LSTM OCR Engine
+        config = ('-l eng --oem 3')
+
         filename = "{}.png".format(os.getpid())
         cv2.imwrite(str(filename),ocr_img)
         print("Image saved to disk")
 
         #Load image from disk and apply run_tesseract
-        text = pytesseract.image_to_string(Image.open(filename))
+        text = pytesseract.image_to_string(Image.open(filename),config=config)
         #Save text to a file
         f = open(str(os.getpid()) + ".txt","w")
         f.write(text)
@@ -183,17 +199,51 @@ class ocrutils:
         print("Written into file")
 
         #Remove the image file
-        # if os.path.isfile(str(filename)):
-            # os.remove(myfile)
-        # else: 
-            # print("Error: %s file not found" % myfile)
+        if os.path.isfile(str(filename)):
+            os.remove(str(filename))
+        else: 
+            print("Error: %s file not found" % myfile)
         
         self.parse_output()
+
+    def parse_line(self,line):
+        '''
+        Function to parse a line of text using the compiled regular expression
+        '''
+        for key,rx in self.rx_dict.items():
+            match = rx.search(line)
+            if(match):
+                return key,True
+        
+        #No matches
+        return False,False
 
     def parse_output(self):
         '''
         Function to parse the text file using regex and save the output in a database
         '''
+        f = open(str(os.getpid()) + ".txt","r")
+
+        for line in f:
+            line = line.strip()            
+            line = line.lower()
+            print("line:",line)
+            print("self.counter:",self.counter)
+            key,ret = self.parse_line(line)
+            if(ret == True and self.counter > 1):
+                print("Inside true condition")
+                print("key:",key)
+                self.parse_dict[str(key)].append(str(line))
+
+        print("self.parse_dict:",self.parse_dict)
+
+
+        #Delete txt files after parsing them
+        if(os.path.isfile(str(os.getpid()) + ".txt")):
+            os.remove(str(os.getpid()) + ".txt")
+        else:
+            print("Text file not found")
+        
         
 
 def breakpoint():
