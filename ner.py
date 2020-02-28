@@ -37,6 +37,7 @@ class nerutils:
         #Run tesseract
         self.run_tesseract(crop_img)
 
+
     def run_tesseract(self,ocr_img):
         '''
         Function to run OCR using tesseract on ocr_img
@@ -76,17 +77,26 @@ class nerutils:
 
         #Reading the contents of the text file
         f = open(str(os.getpid()) + ".txt","r")
-        text = f.read()
+        # text = f.read()
 
         nlp = spacy.load("en_core_web_sm")
         doc = nlp(text)
         displacy.serve(doc, style="ent")
 
-        # for doc in nlp.pipe(text,disable=["tagger","parser"]):
-            
-            # print([(ent.text, ent.label_) for ent in doc.ents])
-            # print(dir(doc))
-            # print("doc.ent",doc.ents)
+        #For debug
+        # nlp = spacy.load("en_core_web_sm")
+        # for line in f:
+        #     line = line.strip()
+        #     print("line:",line)
+        #     doc = nlp(line)
+        #     ents = list(doc.ents)
+        #     for i in range(0,len(ents)):
+        #         print("{},{}".format(ents[i].text,ents[i].label_))
+        #         utils.breakpoint()
+            # print("doc.ents",doc.ents)
+
+
+       
         
             
 
