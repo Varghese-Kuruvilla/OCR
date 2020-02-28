@@ -6,7 +6,8 @@ import cv2
 import numpy as np
 import pytesseract
 from PIL import Image
-
+import spacy
+from spacy import displacy
 
 from debug_utils import utils
 
@@ -73,8 +74,21 @@ class nerutils:
         else: 
             print("Error: %s file not found" % myfile)
 
+        #Reading the contents of the text file
         f = open(str(os.getpid()) + ".txt","r")
-        print(f.read())
+        text = f.read()
+
+        nlp = spacy.load("en_core_web_sm")
+        doc = nlp(text)
+        displacy.serve(doc, style="ent")
+
+        # for doc in nlp.pipe(text,disable=["tagger","parser"]):
+            
+            # print([(ent.text, ent.label_) for ent in doc.ents])
+            # print(dir(doc))
+            # print("doc.ent",doc.ents)
+        
+            
 
 
 
