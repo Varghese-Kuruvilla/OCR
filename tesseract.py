@@ -22,6 +22,9 @@ class ocrutils:
         self.gray_img = None
         self.rx_dict = {'name':re.compile(r'(?P<name>nam.*)')}
         self.parse_dict = {'name':[]}
+        #TODO:See if there is a better way to do this
+        self.ret = False
+        self.key = None
 
     def load_img(self):
         '''Function to load the image corresponding to the path defined by the user'''
@@ -206,6 +209,7 @@ class ocrutils:
         
         self.parse_output()
 
+
     def parse_line(self,line):
         '''
         Function to parse a line of text using the compiled regular expression
@@ -218,6 +222,7 @@ class ocrutils:
         #No matches
         return False,False
 
+
     def parse_output(self):
         '''
         Function to parse the text file using regex and save the output in a database
@@ -229,11 +234,16 @@ class ocrutils:
             line = line.lower()
             print("line:",line)
             print("self.counter:",self.counter)
-            key,ret = self.parse_line(line)
-            if(ret == True and self.counter > 1):
-                print("Inside true condition")
-                print("key:",key)
-                self.parse_dict[str(key)].append(str(line))
+            if(self.counter > 1):
+                if(self.ret == True):
+                    self.parse_dict[str(self.key)].append(str(line))
+                    continue
+
+            self.key,self.ret = self.parse_line(line)
+            # if(ret == True and self.counter > 1):
+            #     print("Inside true condition")
+            #     print("key:",key)
+            #     self.parse_dict[str(key)].append(str(line))
 
         print("self.parse_dict:",self.parse_dict)
 
