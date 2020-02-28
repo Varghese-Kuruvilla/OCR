@@ -9,6 +9,7 @@ import argparse
 import sys
 import matplotlib.pyplot as plt
 import re
+import pandas as pd
 
 #Import utils
 import debug_utils.utils as utils
@@ -20,8 +21,17 @@ class ocrutils:
     def __init__(self):
         self.img = None
         self.gray_img = None
-        self.rx_dict = {'name':re.compile(r'(?P<name>nam.*)')}
-        self.parse_dict = {'name':[]}
+        self.rx_dict = {'name':re.compile(r'(?P<name>nam.*)'),
+        'pan_no':re.compile(r'(?P<pano_no>pan.*)'),
+        'father_name':re.compile(r'(?P<father_name>father.*)'),
+        'relationship':re.compile(r'(?P<relationship>relation.*)'),
+        'residential_addr':re.compile(r'(?P<residential_addr>resident.*)'),
+        'period_stay':re.compile(r'(?P<period_stay>period.*)'),
+        'tel_no':re.compile(r'(?P<tel_no>tel.*)'),
+        'mobile_no':re.compile(r'(?P<mobile_no>mob.*)'),
+        'email':re.compile(r'(?P<email>e.*ai.*)')}
+        self.parse_dict = {'name':[],'pan_no':[],'father_name':[],'relationship':[],'residential_addr':[],'period_stay':[],'tel_no':[],
+                            'mobile_no':[],'email':[]}
         #TODO:See if there is a better way to do this
         self.ret = False
         self.key = None
@@ -124,10 +134,24 @@ class ocrutils:
         # display("Input image",self.img)
         for coord in box_coord_ls:
             ocr_img = self.img[coord[1,0]:coord[1,0] + coord[3,0],coord[0,0]:coord[0,0] + coord[2,0]]
-            display("OCR_Image",ocr_img)
+            # display("OCR_Image",ocr_img)
             self.preprocess_img(ocr_img)
             # cv2.rectangle(cnt_img,(coord[0,0],coord[1,0]),(coord[0,0] + coord[2,0],coord[1,0] + coord[3,0]),(0,0,255),5)
-        # display("Contour Image",cnt_img)        
+        # display("Contour Image",cnt_img) 
+        #Save the final dictionary as a CSV file
+
+        #Error Checking
+        # for key,values in self.parse_dict.items():
+        #     if(len(values) < 4):
+        #         ls_to_append = ['nan'] * (2 - len(values))
+        #         self.parse_dict[key].extend(ls_to_append)pd.DataFrame.from_dict(data_dict,orient='index').T.dropna()
+        
+        print("self.parse_dict",self.parse_dict)
+        utils.breakpoint()
+
+        # df = pd.DataFrame(self.parse_dict)
+        df = pd.DataFrame.from_dict(self.parse_dict,orient='index').T.dropna()
+        df.to_csv('/home/varghese/Nanonets/OCR/csv_files/'+ str(os.getpid()) + ".csv")       
 
     def preprocess_img(self,cnt_img):
         '''
@@ -148,7 +172,8 @@ class ocrutils:
                 Image cropped to an individual contour which is to be preprocessed
         '''
         self.counter = 0 #Counter keeps track of which picture is passed to OCR
-
+        self.ret = False
+        self.key = None 
         #Conversion to grayscale
         gray_img = cv2.cvtColor(cnt_img,cv2.COLOR_BGR2GRAY)
         # display("Grayscale image",gray_img)
@@ -182,7 +207,7 @@ class ocrutils:
                 Preprocessed image on which OCR is run using tesseract
         '''
 
-        display("Image before passing to tesseract",ocr_img)
+        # display("Image before passing to tesseract",ocr_img)
 
         # Define config parameters.
 	    # '-l eng'  for using the English language
@@ -232,18 +257,16 @@ class ocrutils:
         for line in f:
             line = line.strip()            
             line = line.lower()
-            print("line:",line)
-            print("self.counter:",self.counter)
+            # print("line:",line)
+            # print("self.counter:",self.counter)
             if(self.counter > 1):
                 if(self.ret == True):
                     self.parse_dict[str(self.key)].append(str(line))
                     continue
 
             self.key,self.ret = self.parse_line(line)
-            # if(ret == True and self.counter > 1):
-            #     print("Inside true condition")
-            #     print("key:",key)
-            #     self.parse_dict[str(key)].append(str(line))
+            if(self.ret == True): #If the cell contains more than one line of text, break as soon as we find the first match
+                break
 
         print("self.parse_dict:",self.parse_dict)
 
