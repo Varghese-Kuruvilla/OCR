@@ -13,7 +13,7 @@ import pandas as pd
 
 #Import utils
 import debug_utils.utils as utils
-
+from ner import nerutils
 #pytesseract.pytesseract.tesseract_cmd = 'C:\\Users\\Emil\\AppData\\Local\\Tesseract-OCR\\tesseract.exe' 
 
 class ocrutils:
@@ -94,6 +94,8 @@ class ocrutils:
         table_img = cv2.bitwise_and(thresh_img,thresh_img,mask=table_mask)
         display("table_img",table_img)
 
+        #Performing NER at this stage
+        nerutils_obj.process_img(table_img)
 
         #Now we find each contour within the table and give it as input to OCR
         contours, hierarchy = cv2.findContours(table_img,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
@@ -294,4 +296,6 @@ def display(txt,img):
 
 if __name__ == '__main__':
     ocrutils_obj = ocrutils()
+    nerutils_obj = nerutils()
+    #Main Function
     ocrutils_obj.load_img()
