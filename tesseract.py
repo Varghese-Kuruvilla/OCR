@@ -14,6 +14,9 @@ import pandas as pd
 #Import utils
 import debug_utils.utils as utils
 from ner import nerutils
+
+#For debug
+import time
 #pytesseract.pytesseract.tesseract_cmd = 'C:\\Users\\Emil\\AppData\\Local\\Tesseract-OCR\\tesseract.exe' 
 
 class ocrutils:
@@ -90,6 +93,7 @@ class ocrutils:
         table_mask = np.zeros((self.img.shape[0],self.img.shape[1]),dtype = np.uint8)
         table_mask = cv2.drawContours(table_mask,large_contour,0,(255,255,255),-1)
         display("table_mask",table_mask)
+      
 
         table_img = cv2.bitwise_and(thresh_img,thresh_img,mask=table_mask)
         display("table_img",table_img)
