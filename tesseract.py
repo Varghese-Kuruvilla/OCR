@@ -71,21 +71,10 @@ class ocrutils:
         display("Grayscale image",self.gray_img)
 
         #Assume that the paper is white and the ink is black. 
-        #TODO: The threshold value of 100 shouldn't be hardcoded
         _,thresh_img = cv2.threshold(self.gray_img,240,255,cv2.THRESH_BINARY_INV)
         display("Thresholded image",thresh_img)
 
-        #Remove noise from the image
-        # kernel = np.ones((5,5),np.uint8)
-        # thresh_img = cv2.morphologyEx(thresh_img, cv2.MORPH_GRADIENT, kernel)
-        # display("thresh_img",thresh_img)
-
-
-        #Adaptive Thresholding
-        # thresh_img = cv2.adaptiveThreshold(self.gray_img,255,cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,11,2)
-        # utils.display("Adaptive Thresholding",thresh_img)
-
-        #Finding Contours on the image and extracting the largest one
+        #Finding Contours on the image and extracting the largest one, this corresponds to our ROI(table)
         contours, hierarchy = cv2.findContours(thresh_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
         large_contour = sorted(contours, key=cv2.contourArea, reverse=True)[:1] #Extract only the table
         # print("len(contours)",len(contours))
