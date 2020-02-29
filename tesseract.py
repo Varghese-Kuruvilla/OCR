@@ -10,10 +10,11 @@ import sys
 import matplotlib.pyplot as plt
 import re
 import pandas as pd
+import csv
 
 #Import utils
-import debug_utils.utils as utils
-from ner import nerutils
+#import debug_utils.utils as utils
+#from ner import nerutils
 
 #For debug
 import time
@@ -24,7 +25,7 @@ class ocrutils:
     def __init__(self):
         self.img = None
         self.gray_img = None
-        self.rx_dict = {'name':re.compile(r'(?P<name>nam.*)'),
+        self.rx_dict = {'name':re.compile(r'(?P<name>^nam.*)'),
         'pan_no':re.compile(r'(?P<pano_no>pan.*)'),
         'father_name':re.compile(r'(?P<father_name>father.*)'),
         'relationship':re.compile(r'(?P<relationship>relation.*)'),
@@ -40,23 +41,20 @@ class ocrutils:
         self.key = None
 
     def load_img(self):
-        '''Function to load the image corresponding to the path defined by the user'''
-        ap = argparse.ArgumentParser()
-        ap.add_argument("-i","--image",required=True,help = "Path to input image")
-        args = vars(ap.parse_args())
+        '''Function to load the image and call the function for extracting the required ROI'''
 
         #Load Image
-        self.img = cv2.imread(args["image"])
+        self.img = cv2.imread('../input_image/Loan_application_form_digital.jpg')
+        display("Image",self.img)
         self.extract_table()
-        # self.preprocess_img()
-        # self.run_tesseract()
 
     def extract_table(self):
         '''
-        Function for table extraction from a loan document
+        Function for extracting the ROI(table) from the document
         '''
 
         #Image for drawing contours
+        #For debug
         cnt_img = np.copy(self.img)
 
         #Local variables
@@ -79,6 +77,7 @@ class ocrutils:
         large_contour = sorted(contours, key=cv2.contourArea, reverse=True)[:1] #Extract only the table
         # print("len(contours)",len(contours))
 
+        #Creating a mask of the ROI
         table_mask = np.zeros((self.img.shape[0],self.img.shape[1]),dtype = np.uint8)
         table_mask = cv2.drawContours(table_mask,large_contour,0,(255,255,255),-1)
         display("table_mask",table_mask)
@@ -88,11 +87,10 @@ class ocrutils:
         display("table_img",table_img)
 
         #Performing NER at this stage
-        nerutils_obj.process_img(table_img)
+        # nerutils_obj.process_img(table_img)
 
-        #Now we find each contour within the table and give it as input to OCR
+        #Extract each individual contour from the table and merge neighbouring contours
         contours, hierarchy = cv2.findContours(table_img,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
-        #TODO: Don't hardcode the index 1:35
         cell_contours = sorted(contours,key=cv2.contourArea,reverse=True)[1:35]
 
         for cnt in cell_contours:
@@ -106,7 +104,6 @@ class ocrutils:
                 
 
                 for i in range(0,len(box_coord_ls)):
-                # for box_coord_ls[i] in box_coord_ls:
                     if(abs((box_coord_ls[i][0,0] + box_coord_ls[i][2,0]) - box_coord[0,0]) < threshold and abs(box_coord_ls[i][1,0] - box_coord[1,0]) < threshold):
                         flag = True
                         xmin = box_coord_ls[i][0,0]
@@ -121,7 +118,6 @@ class ocrutils:
 
                 if(flag == False): 
                     box_coord_ls.append(box_coord)
-                    # print("box_coord:",box_coord)
                 flag = False
         
         #Draw rectangles
@@ -130,27 +126,27 @@ class ocrutils:
         for coord in box_coord_ls:
             ocr_img = self.img[coord[1,0]:coord[1,0] + coord[3,0],coord[0,0]:coord[0,0] + coord[2,0]]
             # display("OCR_Image",ocr_img)
+
+            #Preprocess the image before passing it to Tesseract
             self.preprocess_img(ocr_img)
             # cv2.rectangle(cnt_img,(coord[0,0],coord[1,0]),(coord[0,0] + coord[2,0],coord[1,0] + coord[3,0]),(0,0,255),5)
-        # display("Contour Image",cnt_img) 
-        #Save the final dictionary as a CSV file
+        # display("Contour Image",cnt_img)
 
-        #Error Checking
-        # for key,values in self.parse_dict.items():
-        #     if(len(values) < 4):
-        #         ls_to_append = ['nan'] * (2 - len(values))
-        #         self.parse_dict[key].extend(ls_to_append)pd.DataFrame.from_dict(data_dict,orient='index').T.dropna()
-        
+
+        #Save the final dictionary as a CSV file       
         print("self.parse_dict",self.parse_dict)
-        utils.breakpoint()
+        # utils.breakpoint()
 
-        # df = pd.DataFrame(self.parse_dict)
-        df = pd.DataFrame.from_dict(self.parse_dict,orient='index').T.dropna()
-        df.to_csv('/home/varghese/Nanonets/OCR/csv_files/'+ str(os.getpid()) + ".csv")       
+        #Writing self.parse_dict into a CSV file
+        with open('../csv_files/'+ str(os.getpid()) + '.csv','w') as csvfile:
+            for key in self.parse_dict.keys():
+                str_to_write = ' '.join(map(str, self.parse_dict[key])) 
+                csvfile.write("%s,%s\n"%(key,str_to_write))
+
 
     def preprocess_img(self,cnt_img):
         '''
-        Function to carry out preprocessing, call the function to run OCR using tesseract
+        Function to carry out preprocessing, before passing the image to Tesseract
         Preprocessing image for OCR
         Involves the following steps:
         1) Scaling to 300 DPI(Ideally)
@@ -184,10 +180,6 @@ class ocrutils:
             self.counter = (i + 1)
             self.run_tesseract(box_img)
         
-
-        #Adaptive Thresholding
-        # adaptive_img = cv2.adaptiveThreshold(gray_img,255,cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,11,2)
-        # utils.display("Adaptive Thresholding",adaptive_img)
         
 
     def run_tesseract(self,ocr_img):
@@ -199,7 +191,7 @@ class ocrutils:
         ---------------
 
         ocr_img: Numpy array
-                Preprocessed image on which OCR is run using tesseract
+                Preprocessed image which is passed to Tesseract
         '''
 
         # display("Image before passing to tesseract",ocr_img)
@@ -219,7 +211,7 @@ class ocrutils:
         f = open(str(os.getpid()) + ".txt","w")
         f.write(text)
         f.close()
-        print("Written into file")
+        print("Output written into text file")
 
         #Remove the image file
         if os.path.isfile(str(filename)):
@@ -232,7 +224,14 @@ class ocrutils:
 
     def parse_line(self,line):
         '''
-        Function to parse a line of text using the compiled regular expression
+        Function to parse a line of text against the compiled regular expression
+
+        Parameters
+
+        ---------------------
+
+        line: String
+            Single line of text from the text file(containing OCR output)
         '''
         for key,rx in self.rx_dict.items():
             match = rx.search(line)
@@ -245,25 +244,27 @@ class ocrutils:
 
     def parse_output(self):
         '''
-        Function to parse the text file using regex and save the output in a database
+        Function to parse the text file using regex
         '''
         f = open(str(os.getpid()) + ".txt","r")
 
         for line in f:
             line = line.strip()            
             line = line.lower()
-            # print("line:",line)
+            line_result = re.findall(r"[0-9a-zA-Z ]+|[0-9a-zA-Z]", str(line))
+            line_result = ' '.join(map(str, line_result)) 
+        
             # print("self.counter:",self.counter)
             if(self.counter > 1):
                 if(self.ret == True):
-                    self.parse_dict[str(self.key)].append(str(line))
+                    self.parse_dict[str(self.key)].append(str(line_result))
                     continue
 
-            self.key,self.ret = self.parse_line(line)
-            if(self.ret == True): #If the cell contains more than one line of text, break as soon as we find the first match
+            self.key,self.ret = self.parse_line(line_result)
+            if(self.ret == True):
                 break
 
-        print("self.parse_dict:",self.parse_dict)
+        f.close()
 
 
         #Delete txt files after parsing them
@@ -282,13 +283,14 @@ def display(txt,img):
     winname = txt
     cv2.namedWindow(winname,cv2.WINDOW_NORMAL)
     cv2.imshow(winname,img)
-    key = cv2.waitKey(0)
+    key = cv2.waitKey(1)
     if(key & 0xFF == ord('q')):
         cv2.destroyAllWindows()
         sys.exit()
 
 if __name__ == '__main__':
+    
     ocrutils_obj = ocrutils()
-    nerutils_obj = nerutils()
+    #nerutils_obj = nerutils()
     #Main Function
     ocrutils_obj.load_img()
