@@ -44,7 +44,7 @@ class ocrutils:
         '''Function to load the image and call the function for extracting the required ROI'''
 
         #Load Image
-        self.img = cv2.imread('../input_image/Loan_application_form_digital.jpg')
+        self.img = cv2.imread('./input_image/Loan_application_form_digital.jpg')
         display("Image",self.img)
         self.extract_table()
 
@@ -138,7 +138,7 @@ class ocrutils:
         # utils.breakpoint()
 
         #Writing self.parse_dict into a CSV file
-        with open('../csv_files/'+ str(os.getpid()) + '.csv','w') as csvfile:
+        with open('./csv_files/'+ str(os.getpid()) + '.csv','w') as csvfile:
             for key in self.parse_dict.keys():
                 str_to_write = ' '.join(map(str, self.parse_dict[key])) 
                 csvfile.write("%s,%s\n"%(key,str_to_write))
