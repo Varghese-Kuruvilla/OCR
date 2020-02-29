@@ -76,8 +76,11 @@ class nerutils:
             print("Error: %s file not found" % myfile)
 
         #Reading the contents of the text file
-        f = open(str(os.getpid()) + ".txt","r")
+        # f = open(str(os.getpid()) + ".txt","r")
+        #For debug
+        f = open("/home/varghese/Nanonets/OCR/code/debug_spacy.txt","r")
         # text = f.read()
+        text = "My name is Matthew. I work in apple" #Sort of hopeless
 
         nlp = spacy.load("en_core_web_sm")
         doc = nlp(text)
@@ -93,7 +96,7 @@ class nerutils:
         #     for i in range(0,len(ents)):
         #         print("{},{}".format(ents[i].text,ents[i].label_))
         #         utils.breakpoint()
-            # print("doc.ents",doc.ents)
+        #     print("doc.ents",doc.ents)
 
 
        

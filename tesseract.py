@@ -18,7 +18,7 @@ import csv
 
 #For debug
 import time
-#pytesseract.pytesseract.tesseract_cmd = 'C:\\Users\\Emil\\AppData\\Local\\Tesseract-OCR\\tesseract.exe' 
+ 
 
 class ocrutils:
     '''Class to do basic image preprocessing and perform OCR using tesseract'''
