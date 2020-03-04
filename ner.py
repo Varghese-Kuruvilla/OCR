@@ -13,6 +13,7 @@ from spacy import displacy
 sys.path.append('/home/varghese/Nanonets/OCR/code')
 from debug_utils import utils
 import pickle
+import re
 
 class nerutils:
     '''
@@ -32,11 +33,18 @@ class nerutils:
         self.pattern_name = [{"ENT_TYPE":person_label}]
         self.pattern_period_stay = [{"ENT_TYPE":date_label}]
         self.pattern_residential_addr = [{"ENT_TYPE":country_label}]
+        # self.pattern_pan_no = [{"TEXT": {"REGEX": "^([a-zA-Z]){5}([0-9]){4}([a-zA-Z]){1}?$"}}]
+        #TODO: Add entities like brother-in-law , sister-in-law and so on
+        self.pattern_relationship = ["wife","husband","father","mother","grandfather","grandmother","brother","sister","uncle","aunt"] 
+        self.pattern_mobile_no = [{"ORTH": "Hello"}] #TODO: Improve this regex
+        # self.pattern_mobile_no = [{"TEXT": {"REGEX": r'^\+\d{2}\d{10}'}}] #TODO: Improve this regex
 
-        # self.pattern_pan_no = [{"IS_ALPHA":True,"IS_DIGIT":True}]
-        self.pattern_pan_no = [{"TEXT": {"REGEX": "^([a-zA-Z]){5}([0-9]){4}([a-zA-Z]){1}?$"}}]
-        self.dict_pattern = {'name':self.pattern_name,'pan_no':self.pattern_pan_no,'father_name':[],'relationship':[],'residential_addr':self.pattern_residential_addr,'period_stay':self.pattern_period_stay,'tel_no':[],
+
+        self.dict_pattern = {'name':self.pattern_name,'pan_no':[],'father_name':self.pattern_name,'relationship':[],'residential_addr':self.pattern_residential_addr,'period_stay':self.pattern_period_stay,'tel_no':[],
                             'mobile_no':[],'email':[]}
+        
+        self.dict_regex = {'pan_no':re.compile(r'(?P<pan_no>^([a-zA-Z]){5}([0-9]){4}([a-zA-Z]){1}?$)'),
+                           "mobile_no":re.compile(r'(?P<mobile_no>^91[-\s]??\d{10}$)')}
         
         self.dict_cond = {}
         self.key = None
@@ -58,21 +66,30 @@ class nerutils:
         #For debug(Changing specific values in dict_ocr)
         dict_ocr['name'] = ['Mr Peter Brown','Mrs. Susan Brown']
         dict_ocr['residential_addr'] = ['NO 78, Downing Street West Sussex, England','NO 78, Downing Street West Sussex, England']
+        dict_ocr['relationship'] = ['husband','wife']
         print("dict_ocr:",dict_ocr)
 
         for self.key, value_ls in dict_ocr.items():
-            if(self.key == 'name' or self.key == 'pan_no' or self.key == 'period_stay' or self.key == 'residential_addr'):
+            if(self.key == 'relationship'): #Here we simply carry out phrase matching using a dictionary
+                print("dict_ocr[relationship]",dict_ocr['relationship'])
+                for value in value_ls:
+                    value = value.lower() #Converting to lowercase
+                    if(value in self.pattern_relationship):
+                        self.dict_cond[self.key] = True
+
+            if(self.key == 'name' or self.key == 'period_stay' or self.key == 'residential_addr'
+             or self.key == 'father_name'):
                 print("self.key",self.key)
                 self.matcher.add(str(self.key),self.for_debug,self.dict_pattern[self.key])
-            # if(self.key == 'name'):
-            #     self.matcher.add("name",self.for_debug,self.pattern_name)
-            # elif(self.key == 'pan_no'):
-            #     print("dict_ocr[pan_no]",dict_ocr[self.key])    
-            #     self.matcher.add("pan_no",self.for_debug,self.pattern_pan_no)
-            # elif(self.key == 'period_stay'):
-            #     print("dict_ocr[period_stay]",dict_ocr[self.key])
-            #     self.matcher.add('period_stay',self.for_debug,self.pattern_period_stay)
-                # utils.breakpoint()
+            
+            if(self.key == 'pan_no' or self.key == 'mobile_no'):
+                for value in value_ls:
+                    value = value.lower()
+                    match = self.dict_regex[self.key].search(value)
+                    self.dict_cond[self.key] = True
+
+                
+
 
             if(self.matcher):
                 for value in value_ls:
@@ -89,12 +106,16 @@ class nerutils:
                     print("matches:",matches)
 
 
-                if("name" or "pan_no" or "period_stay" in self.matcher):
+                if("name" or "pan_no" or "period_stay" or "residential_addr" or "father_name" or "mobile_no" in self.matcher):
+                    print("Inside condition make self.matcher=None")
+                    print("self.key",self.key)
+                    on_match, patterns = self.matcher.get(self.key)
+                    print("patterns:",patterns)
+                    utils.breakpoint()
                     # print("self.matcher contains name")
                     self.matcher = None
                     #Initialize self.matcher object again
                     self.matcher = Matcher(self.nlp.vocab)
-                    utils.breakpoint()
 
         print("self.dict_cond",self.dict_cond)
                 
