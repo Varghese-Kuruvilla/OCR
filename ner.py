@@ -44,7 +44,9 @@ class nerutils:
                             'mobile_no':[],'email':[]}
         
         self.dict_regex = {'pan_no':re.compile(r'(?P<pan_no>^([a-zA-Z]){5}([0-9]){4}([a-zA-Z]){1}?$)'),
-                           "mobile_no":re.compile(r'(?P<mobile_no>^91[-\s]??\d{10}$)')}
+                           "mobile_no":re.compile(r'(?P<mobile_no>^91[-\s]??\d{10}$)'),
+                           "email":re.compile(r'(?P<email>^([a-zA-Z0-9_\-\.]+)(@\s)?([a-zA-Z0-9_\-\.]+)(\.\s)?([a-zA-Z]{2,5})$)')}
+
         
         self.dict_cond = {}
         self.key = None
@@ -82,11 +84,14 @@ class nerutils:
                 print("self.key",self.key)
                 self.matcher.add(str(self.key),self.for_debug,self.dict_pattern[self.key])
             
-            if(self.key == 'pan_no' or self.key == 'mobile_no'):
+            if(self.key == 'pan_no' or self.key == 'mobile_no' or self.key == 'email'):
                 for value in value_ls:
                     value = value.lower()
+                    if(self.key == 'email'):
+                        print("value",value)
                     match = self.dict_regex[self.key].search(value)
-                    self.dict_cond[self.key] = True
+                    if(match != None):
+                        self.dict_cond[self.key] = True
 
                 
 
