@@ -14,7 +14,8 @@ import csv
 
 #Import utils
 #import debug_utils.utils as utils
-#from ner import nerutils
+sys.path.append('/home/varghese/Nanonets/OCR')
+from code_testing.ner import nerutils
 
 #For debug
 import time
@@ -25,15 +26,15 @@ class ocrutils:
     def __init__(self):
         self.img = None
         self.gray_img = None
-        self.rx_dict = {'name':re.compile(r'(?P<name>^nam.*)'),
-        'pan_no':re.compile(r'(?P<pano_no>pan.*)'),
-        'father_name':re.compile(r'(?P<father_name>father.*)'),
-        'relationship':re.compile(r'(?P<relationship>relation.*)'),
-        'residential_addr':re.compile(r'(?P<residential_addr>resident.*)'),
-        'period_stay':re.compile(r'(?P<period_stay>period.*)'),
-        'tel_no':re.compile(r'(?P<tel_no>tel.*)'),
-        'mobile_no':re.compile(r'(?P<mobile_no>mob.*)'),
-        'email':re.compile(r'(?P<email>e.*ai.*)')}
+        self.rx_dict = {'name':re.compile(r'(?P<name>^nam.*)', flags=re.IGNORECASE),
+        'pan_no':re.compile(r'(?P<pano_no>pan.*)',flags=re.IGNORECASE),
+        'father_name':re.compile(r'(?P<father_name>father.*)',flags=re.IGNORECASE),
+        'relationship':re.compile(r'(?P<relationship>relation.*)',flags=re.IGNORECASE),
+        'residential_addr':re.compile(r'(?P<residential_addr>resident.*)',flags=re.IGNORECASE),
+        'period_stay':re.compile(r'(?P<period_stay>period.*)',flags=re.IGNORECASE),
+        'tel_no':re.compile(r'(?P<tel_no>tel.*)',flags=re.IGNORECASE),
+        'mobile_no':re.compile(r'(?P<mobile_no>mob.*)',flags=re.IGNORECASE),
+        'email':re.compile(r'(?P<email>e.*ai.*)',flags=re.IGNORECASE)}
         self.parse_dict = {'name':[],'pan_no':[],'father_name':[],'relationship':[],'residential_addr':[],'period_stay':[],'tel_no':[],
                             'mobile_no':[],'email':[]}
         #TODO:See if there is a better way to do this
@@ -44,8 +45,9 @@ class ocrutils:
         '''Function to load the image and call the function for extracting the required ROI'''
 
         #Load Image
-        self.img = cv2.imread('./input_image/Loan_application_form_digital.jpg')
-        display("Image",self.img)
+        self.img = cv2.imread('../input_image/Loan_application_form_digital_v2.jpg')
+        # self.img = cv2.imread('/home/varghese/Nanonets/OCR/images/Loan_application_scanned.jpg')
+        # display("Image",self.img)
         self.extract_table()
 
     def extract_table(self):
@@ -63,14 +65,14 @@ class ocrutils:
         threshold = 10
         flag = False
 
-        display("Input image",self.img)
+        # display("Input image",self.img)
 
         self.gray_img = cv2.cvtColor(self.img,cv2.COLOR_BGR2GRAY)
-        display("Grayscale image",self.gray_img)
+        # display("Grayscale image",self.gray_img)
 
         #Assume that the paper is white and the ink is black. 
         _,thresh_img = cv2.threshold(self.gray_img,240,255,cv2.THRESH_BINARY_INV)
-        display("Thresholded image",thresh_img)
+        # display("Thresholded image",thresh_img)
 
         #Finding Contours on the image and extracting the largest one, this corresponds to our ROI(table)
         contours, hierarchy = cv2.findContours(thresh_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
@@ -80,11 +82,11 @@ class ocrutils:
         #Creating a mask of the ROI
         table_mask = np.zeros((self.img.shape[0],self.img.shape[1]),dtype = np.uint8)
         table_mask = cv2.drawContours(table_mask,large_contour,0,(255,255,255),-1)
-        display("table_mask",table_mask)
+        # display("table_mask",table_mask)
       
 
         table_img = cv2.bitwise_and(thresh_img,thresh_img,mask=table_mask)
-        display("table_img",table_img)
+        # display("table_img",table_img)
 
         #Performing NER at this stage
         # nerutils_obj.process_img(table_img)
@@ -134,14 +136,18 @@ class ocrutils:
 
 
         #Save the final dictionary as a CSV file       
-        print("self.parse_dict",self.parse_dict)
+        # print("self.parse_dict",self.parse_dict)
+        #Check using NER
+        nerutils_obj.check_ocr(self.parse_dict)
         # utils.breakpoint()
 
         #Writing self.parse_dict into a CSV file
-        with open('./csv_files/'+ str(os.getpid()) + '.csv','w') as csvfile:
-            for key in self.parse_dict.keys():
-                str_to_write = ' '.join(map(str, self.parse_dict[key])) 
-                csvfile.write("%s,%s\n"%(key,str_to_write))
+        # with open('../csv_files/'+ str(os.getpid()) + '.csv','w') as csvfile:
+        #     fieldnames = list(self.parse_dict.keys())
+        #     writer = csv.DictWriter(csvfile,fieldnames=fieldnames)
+
+        #     writer.writeheader()
+        #     writer.writerow(self.parse_dict)
 
 
     def preprocess_img(self,cnt_img):
@@ -177,6 +183,8 @@ class ocrutils:
         coord_ls = [0,362,693,thresh_img.shape[1]]
         for i in range(0,len(coord_ls)-1):
             box_img = thresh_img[:,coord_ls[i]:coord_ls[i+1]]
+            #For debug
+            # display("box_img",box_img)
             self.counter = (i + 1)
             self.run_tesseract(box_img)
         
@@ -213,6 +221,11 @@ class ocrutils:
         f.close()
         print("Output written into text file")
 
+        #For debug
+        # f = open(str(os.getpid()) + ".txt","r")
+        # str_read = f.read()
+        # print("str_read:",str_read)
+
         #Remove the image file
         if os.path.isfile(str(filename)):
             os.remove(str(filename))
@@ -248,23 +261,25 @@ class ocrutils:
         '''
         f = open(str(os.getpid()) + ".txt","r")
 
-        for line in f:
-            line = line.strip()            
-            line = line.lower()
-            line_result = re.findall(r"[0-9a-zA-Z ]+|[0-9a-zA-Z]", str(line))
-            line_result = ' '.join(map(str, line_result)) 
-        
-            # print("self.counter:",self.counter)
-            if(self.counter > 1):
-                if(self.ret == True):
-                    self.parse_dict[str(self.key)].append(str(line_result))
-                    continue
 
-            self.key,self.ret = self.parse_line(line_result)
+        # for line in f:
+        line = f.read()
+        line = line.strip()            
+        # line = line.lower()
+        line_result = re.findall(r"[0-9a-zA-Z ]+|[0-9a-zA-Z]", str(line))
+        line_result = ' '.join(map(str, line_result)) 
+        print("line_result:",line_result)
+        # breakpoint()
+        # print("self.counter:",self.counter)
+        if(self.counter > 1):
             if(self.ret == True):
-                break
+                self.parse_dict[str(self.key)].append(str(line_result))
+
+        else:        
+            self.key,self.ret = self.parse_line(line_result)
 
         f.close()
+        # print("self.parse_dict",self.parse_dict)
 
 
         #Delete txt files after parsing them
@@ -291,6 +306,6 @@ def display(txt,img):
 if __name__ == '__main__':
     
     ocrutils_obj = ocrutils()
-    #nerutils_obj = nerutils()
+    nerutils_obj = nerutils()
     #Main Function
     ocrutils_obj.load_img()
