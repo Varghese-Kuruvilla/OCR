@@ -15,7 +15,7 @@ import csv
 #Import utils
 #import debug_utils.utils as utils
 sys.path.append('/home/varghese/Nanonets/OCR')
-from code_testing.ner import nerutils
+from ner import nerutils
 
 #For debug
 import time
@@ -138,8 +138,32 @@ class ocrutils:
         #Save the final dictionary as a CSV file       
         # print("self.parse_dict",self.parse_dict)
         #Check using NER
-        nerutils_obj.check_ocr(self.parse_dict)
-        # utils.breakpoint()
+        dict_cond = nerutils_obj.check_ocr(self.parse_dict)
+        print("self.parse_dict",self.parse_dict)
+        print("dict_cond",dict_cond)
+
+        #Visualize the output
+        os.system('clear')
+        color_bold = '\033[1m'
+        color_blue = '\033[94m'
+        color_normal = '\033[0m'
+        print(color_bold + color_blue + "OCR Output")
+        print(color_normal)
+
+        for element in self.parse_dict:
+            print("{key}: {value}".format(key=element, value=self.parse_dict[element]))
+        
+        print("\n"*5) #leaving vertical space of 10 lines
+        
+
+        print(color_bold + color_blue + "Result of Validation by NER")
+        print(color_normal)
+        for element in dict_cond:
+            print("{key}: {value}".format(key=element, value=dict_cond[element]))
+
+        sys.exit(0)
+
+        #Filtering out self.parse_dict based on dict_cond values
 
         #Writing self.parse_dict into a CSV file
         # with open('../csv_files/'+ str(os.getpid()) + '.csv','w') as csvfile:

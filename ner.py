@@ -1,7 +1,7 @@
 #Script to implement NER 
 import os
 import sys
-sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
+# sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
 import cv2
 import numpy as np
 import pytesseract
@@ -66,9 +66,9 @@ class nerutils:
         '''
        
         #For debug(Changing specific values in dict_ocr)
-        dict_ocr['name'] = ['Mr Peter Brown','Mrs. Susan Brown']
-        dict_ocr['residential_addr'] = ['NO 78, Downing Street West Sussex, England','NO 78, Downing Street West Sussex, England']
-        dict_ocr['relationship'] = ['husband','wife']
+        # dict_ocr['name'] = ['Mr Peter Brown','Mrs. Susan Brown']
+        # dict_ocr['residential_addr'] = ['NO 78, Downing Street West Sussex, England','NO 78, Downing Street West Sussex, England']
+        # dict_ocr['relationship'] = ['husband','wife']
         print("dict_ocr:",dict_ocr)
 
         for self.key, value_ls in dict_ocr.items():
@@ -87,8 +87,6 @@ class nerutils:
             if(self.key == 'pan_no' or self.key == 'mobile_no' or self.key == 'email'):
                 for value in value_ls:
                     value = value.lower()
-                    if(self.key == 'email'):
-                        print("value",value)
                     match = self.dict_regex[self.key].search(value)
                     if(match != None):
                         self.dict_cond[self.key] = True
@@ -116,13 +114,14 @@ class nerutils:
                     print("self.key",self.key)
                     on_match, patterns = self.matcher.get(self.key)
                     print("patterns:",patterns)
-                    utils.breakpoint()
+                    # utils.breakpoint()
                     # print("self.matcher contains name")
                     self.matcher = None
                     #Initialize self.matcher object again
                     self.matcher = Matcher(self.nlp.vocab)
 
-        print("self.dict_cond",self.dict_cond)
+        # print("self.dict_cond",self.dict_cond)
+        return self.dict_cond
                 
 
     def process_img(self,img):
@@ -241,7 +240,7 @@ class nerutils:
                 ents = list(doc.ents)
                 for i in range(0,len(ents)):
                     print("{},{}".format(ents[i].text,ents[i].label_))
-                    utils.breakpoint()
+                    # utils.breakpoint()
 
     
 
