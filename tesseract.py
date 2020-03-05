@@ -144,23 +144,9 @@ class ocrutils:
 
         #Visualize the output
         os.system('clear')
-        color_bold = '\033[1m'
-        color_blue = '\033[94m'
-        color_normal = '\033[0m'
-        print(color_bold + color_blue + "OCR Output")
-        print(color_normal)
-
-        for element in self.parse_dict:
-            print("{key}: {value}".format(key=element, value=self.parse_dict[element]))
-        
+        visualize_output_dict("OCR Output",self.parse_dict)
         print("\n"*5) #leaving vertical space of 10 lines
-        
-
-        print(color_bold + color_blue + "Result of Validation by NER")
-        print(color_normal)
-        for element in dict_cond:
-            print("{key}: {value}".format(key=element, value=dict_cond[element]))
-
+        visualize_output_dict("Result of validation using NER",dict_cond)
         sys.exit(0)
 
         #Filtering out self.parse_dict based on dict_cond values
@@ -326,6 +312,17 @@ def display(txt,img):
     if(key & 0xFF == ord('q')):
         cv2.destroyAllWindows()
         sys.exit()
+
+def visualize_output_dict(txt,op_dict):
+    '''Utility Function to visualize output'''
+    color_bold = '\033[1m'
+    color_blue = '\033[94m'
+    color_normal = '\033[0m'
+    print(color_bold + color_blue + str(txt))
+    print(color_normal)
+
+    for element in op_dict:
+        print("{key}: {value}".format(key=element, value=op_dict[element]))
 
 if __name__ == '__main__':
     
