@@ -14,7 +14,6 @@ import csv
 
 #Import utils
 #import debug_utils.utils as utils
-sys.path.append('/home/varghese/Nanonets/OCR')
 from ner import nerutils
 
 #For debug
@@ -22,7 +21,24 @@ import time
  
 
 class ocrutils:
-    '''Class to do basic image preprocessing and perform OCR using tesseract'''
+    '''Class to do basic image preprocessing, extract the ROI from the image and perform OCR using tesseract
+
+    Attributes
+    ---------------
+    self.img : Numpy array
+            Image to be processed
+
+    self.gray_img: Numpy array
+            Grayscale Image
+    
+    self.rx_dict: Dict
+            Python dictionary containing regular expressions to match each of the fields in the doc
+
+    self.ret, self.key: Integers
+            Used to parse the result of OCR
+    '''
+    
+    
     def __init__(self):
         self.img = None
         self.gray_img = None
@@ -46,13 +62,17 @@ class ocrutils:
 
         #Load Image
         self.img = cv2.imread('../input_image/Loan_application_form_digital_v2.jpg')
-        # self.img = cv2.imread('/home/varghese/Nanonets/OCR/images/Loan_application_scanned.jpg')
         # display("Image",self.img)
         self.extract_table()
 
     def extract_table(self):
         '''
-        Function for extracting the ROI(table) from the document
+        1)Function for extracting the ROI(table) from the document
+        More specifically the function extracts individual rows from the table and passes it to 
+        self.preprocess_img.
+
+        2)Also invokes the function check_ocr from ner.py and stores the result of validation returned
+        from this function
         '''
 
         #Image for drawing contours
@@ -189,8 +209,9 @@ class ocrutils:
         _,thresh_img = cv2.threshold(gray_img,230,255,cv2.THRESH_BINARY)
         # display("thresh_img",thresh_img)
 
-        #Split the entire image into individual boxes and pass each one to run_tesseract
-        coord_ls = [0,362,693,thresh_img.shape[1]]
+        #Split each row into individual boxes and pass each one of them to self.run_tesseract
+        #Assume that the experiment is carried out in a controlled environment and hence we hardcode the values for coord_ls
+        coord_ls = [0,362,693,thresh_img.shape[1]] 
         for i in range(0,len(coord_ls)-1):
             box_img = thresh_img[:,coord_ls[i]:coord_ls[i+1]]
             #For debug
@@ -223,7 +244,7 @@ class ocrutils:
         cv2.imwrite(str(filename),ocr_img)
         print("Image saved to disk")
 
-        #Load image from disk and apply run_tesseract
+        #Apply OCR using pytesseract
         text = pytesseract.image_to_string(Image.open(filename),config=config)
         #Save text to a file
         f = open(str(os.getpid()) + ".txt","w")
@@ -232,9 +253,9 @@ class ocrutils:
         print("Output written into text file")
 
         #For debug
-        # f = open(str(os.getpid()) + ".txt","r")
-        # str_read = f.read()
-        # print("str_read:",str_read)
+        f = open(str(os.getpid()) + ".txt","r")
+        str_read = f.read()
+        print("str_read:",str_read)
 
         #Remove the image file
         if os.path.isfile(str(filename)):
@@ -247,7 +268,7 @@ class ocrutils:
 
     def parse_line(self,line):
         '''
-        Function to parse a line of text against the compiled regular expression
+        Function to parse a line of text using the compiled regular expression
 
         Parameters
 
@@ -267,7 +288,8 @@ class ocrutils:
 
     def parse_output(self):
         '''
-        Function to parse the text file using regex
+        Reads text file(containing OCR result), invokes the function parse_line to parse the output 
+        using regex and updates the dictionary self.parse_dict based on the result of parse_line
         '''
         f = open(str(os.getpid()) + ".txt","r")
 
@@ -308,7 +330,7 @@ def display(txt,img):
     winname = txt
     cv2.namedWindow(winname,cv2.WINDOW_NORMAL)
     cv2.imshow(winname,img)
-    key = cv2.waitKey(1)
+    key = cv2.waitKey(0)
     if(key & 0xFF == ord('q')):
         cv2.destroyAllWindows()
         sys.exit()

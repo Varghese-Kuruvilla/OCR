@@ -35,8 +35,9 @@ class nerutils:
         self.pattern_name = [{"ENT_TYPE":person_label}]
         self.pattern_period_stay = [{"ENT_TYPE":date_label}]
         self.pattern_residential_addr = [{"ENT_TYPE":country_label}]
+
+        
         self.pattern_relationship = ["wife","husband","father","mother","grandfather","grandmother","brother","sister","uncle","aunt"] 
-        self.pattern_mobile_no = [{"ORTH": "Hello"}] 
 
 
         self.dict_pattern = {'name':self.pattern_name,'pan_no':[],'father_name':self.pattern_name,'relationship':[],'residential_addr':self.pattern_residential_addr,'period_stay':self.pattern_period_stay,'tel_no':[],
@@ -123,130 +124,7 @@ class nerutils:
 
         # print("self.dict_cond",self.dict_cond)
         return self.dict_cond
-                
-
-    def process_img(self,img):
-        '''
-        Extract text, call OCR and pass the output to the spacy
-
-        Attributes
-        -------------
-        img: Numpy array
-            Image to be processed
-        '''
-        utils.display("Image",img)
-        
-        #TODO: Try to remove hardcoding
-        crop_img = img[:,624:img.shape[1]] 
-        utils.display("Cropped Image",crop_img)
-
-        crop_img = np.bitwise_not(crop_img)
-        utils.display("Cropped Image",crop_img)
-
-        #Run tesseract
-        self.run_tesseract(crop_img)
-
-
-    def run_tesseract(self,ocr_img):
-        '''
-        Function to run OCR using tesseract on ocr_img
-
-        Parameters
-
-        ---------------
-
-        ocr_img: Numpy array
-                Preprocessed image on which OCR is run using tesseract
-        '''
-
-        # display("Image before passing to tesseract",ocr_img)
-
-        # Define config parameters.
-	    # '-l eng'  for using the English language
-	    # '--oem 1' for using LSTM OCR Engine
-        config = ('-l eng --oem 3')
-
-        filename = "{}.png".format(os.getpid())
-        cv2.imwrite(str(filename),ocr_img)
-        print("Image saved to disk")
-
-        #Load image from disk and apply run_tesseract
-        text = pytesseract.image_to_string(Image.open(filename),config=config)
-        #Save text to a file
-        f = open(str(os.getpid()) + ".txt","w")
-        f.write(text)
-        f.close()
-        print("Written into file")
-
-        #Remove the image file
-        # if os.path.isfile(str(filename)):
-        #     os.remove(str(filename))
-        # else: 
-        #     print("Error: %s file not found" % myfile)
-
-        #Reading the contents of the text file
-        # f = open(str(os.getpid()) + ".txt","r")
-        #For debug
-        f = open("/home/varghese/Nanonets/OCR/code/debug_spacy.txt","r")
-        # text = f.read()
-        text = "My name is Matthew. I work in apple" #Sort of hopeless
-
-        nlp = spacy.load("en_core_web_sm")
-        doc = nlp(text)
-        displacy.serve(doc, style="ent")
-
-        #For debug
-        # nlp = spacy.load("en_core_web_sm")
-        # for line in f:
-        #     line = line.strip()
-        #     print("line:",line)
-        #     doc = nlp(line)
-        #     ents = list(doc.ents)
-        #     for i in range(0,len(ents)):
-        #         print("{},{}".format(ents[i].text,ents[i].label_))
-        #         utils.breakpoint()
-        #     print("doc.ents",doc.ents)
-
-    def compare_ner(self,txt_file_path):
-        '''
-        Function to compare the performance of different NER models
-
-        Parameters
-        ------------------
-        txt_file_path: Path of the text file containing text for NER
-
-        '''
-        #Performance of Spacy
-        use_spacy = True
-        if(use_spacy == True):
-            nlp = spacy.load("en_core_web_sm")
-        
-            #Creating a matcher object
-            matcher = Matcher(nlp.vocab)
-            date_label = nlp.vocab.strings["DATE"]
-            print("date_label",date_label)
-            # pattern = [{"SHAPE": "dd","ENT_TYPE":date_label}, {"SHAPE":"dddd","LENGTH":{"IN": [6,7,8]}}]
-            pattern = [{"SHAPE": "dd","ENT_TYPE":date_label}, {"SHAPE":"dddd","LENGTH": 6,"LENGTH":7,"LENGTH":8,"ENT_TYPE":date_label}]
-
-            matcher.add("match_date",self.for_debug,pattern)
-            f = open(str(txt_file_path),"r")
-            for line in f:
-                line = line.strip()
-                print("line:",line)
-                doc = nlp(line)
-                print([t.text for t in doc])
-                #For debug
-                matches = matcher(doc)
-                print("matches:",matches)
-                ents = list(doc.ents)
-                for i in range(0,len(ents)):
-                    print("{},{}".format(ents[i].text,ents[i].label_))
-                    # utils.breakpoint()
-
     
-
-
-
 #For debug
 if __name__ == '__main__':
     nerutils_obj = nerutils()
