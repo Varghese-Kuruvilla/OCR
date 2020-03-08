@@ -10,7 +10,6 @@ import spacy
 from spacy.matcher import Matcher
 from spacy import displacy
 
-sys.path.append('/home/varghese/Nanonets/OCR/code')
 from debug_utils import utils
 import pickle
 import re
@@ -18,6 +17,24 @@ import re
 class nerutils:
     '''
     Class to implement NER on the text input
+    Attributes
+    ------------
+    self.nlp: NLP Object
+    self.matcher: spaCy's matcher object 
+    self.pattern_name,self.pattern_period_stay,self.pattern_residential_addr: 
+                Patterns used by the self.matcher.add() call
+    self.pattern_relationship: List
+                Contains the possible values of relationship which are used to match 
+                the relationship field in the loan document.
+    self.dict_regex: Dictionary
+                Python dictionary containing the regular expressions which are used 
+                to parse structured fields such as email-id, mobile no and pan_no
+    self.dict_cond: Dictionary
+                Contains boolean values corresponding to the fields(keys) in the loan
+                document which indicates if the result is valid or not.
+    self.key: Integer
+                Int representing the field name, used in self.dict_cond to set the corresponding
+                field to True if valid 
     '''
 
     def __init__(self):
@@ -52,22 +69,37 @@ class nerutils:
         self.dict_cond = {}
         self.key = None
 
-    def for_debug(self,matcher,doc,i,matches):
+    def callback_fn(self,matcher,doc,i,matches):
         '''
         Callback function for the matcher object
         Sets the value corresponding to self.key in self.dict_cond equal to True
+        Parameters
+        ---------------
+        matcher:matcher object
+        doc: String on which matcher object operates
+        matches: List
+                List of all the matches in the sentence
+        i:  Integer
+            Index of the current match
         '''
         self.dict_cond[self.key] = True
 
     def check_ocr(self,dict_ocr):
         '''
         Function to check the output of OCR using rule matching and NER
+
+        Parameters
+        -----------------
+        dict_ocr: Dictionary
+                Dictionary containing the result of fields(as keys) and the result of 
+                OCR(strings) as corresponding values
+        
+        Returns
+        -------------------
+        self.dict_cond: Dict
+                Dictionary containing fields(as keys) and bool value True/False indicating
+                if the corresponding fields are valid or not.
         '''
-       
-        #For debug(Changing specific values in dict_ocr)
-        # dict_ocr['name'] = ['Mr Peter Brown','Mrs. Susan Brown']
-        # dict_ocr['residential_addr'] = ['NO 78, Downing Street West Sussex, England','NO 78, Downing Street West Sussex, England']
-        # dict_ocr['relationship'] = ['husband','wife']
         print("dict_ocr:",dict_ocr)
 
         for self.key, value_ls in dict_ocr.items():
@@ -84,18 +116,12 @@ class nerutils:
                         if(match != None):
                             self.dict_cond[self.key] = True
 
-            #For keys in the if condition below we make use of the Spacy matcher object
+            #For keys in the if condition below we make use of NER using Spacy's matcher object
             if(self.key == 'name' or self.key == 'period_stay' or self.key == 'residential_addr'
              or self.key == 'father_name'):
                 print("self.key",self.key)
-                self.matcher.add(str(self.key),self.for_debug,self.dict_pattern[self.key])
+                self.matcher.add(str(self.key),self.callback_fn,self.dict_pattern[self.key])
             
-            # if(self.key == 'pan_no' or self.key == 'mobile_no' or self.key == 'email'):
-            #     for value in value_ls:
-            #         value = value.lower()
-            #         match = self.dict_regex[self.key].search(value)
-            #         if(match != None):
-            #             self.dict_cond[self.key] = True
 
 
             if(self.matcher):
@@ -107,7 +133,7 @@ class nerutils:
                     # print("ents",ents)
                     # for i in range(0,len(ents)):
                     #     print("{},{}".format(ents[i].text,ents[i].label_)) 
-                    print([t.text for t in doc])
+                    # print([t.text for t in doc])
 
                     matches = self.matcher(doc)
                     print("matches:",matches)
@@ -128,12 +154,3 @@ class nerutils:
 #For debug
 if __name__ == '__main__':
     nerutils_obj = nerutils()
-    # img = cv2.imread("/home/varghese/Nanonets/OCR/images/Loan_application_scanned.jpg")
-    # nerutils_obj.process_img(img)
-    # nerutils_obj.compare_ner("/home/varghese/Nanonets/OCR/code_testing/compare_ner_testbench.txt")
-    # nerutils_obj.compare_ner("/home/varghese/Nanonets/OCR/code_testing/test_spacy_address.txt")
-
-    #Reading data from a pickle file
-    pickle_in = open("/home/varghese/Nanonets/OCR/code/pickle_files/dict_ocr.pickle","rb")
-    dict_ocr = pickle.load(pickle_in)
-    nerutils_obj.check_ocr(dict_ocr)
